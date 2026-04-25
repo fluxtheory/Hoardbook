@@ -1,0 +1,31 @@
+[package]
+name    = "hb-app"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "hb_app"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "hb-app"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+hb-core    = { path = "../hb-core" }
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = { workspace = true }
+anyhow     = { workspace = true }
+chrono     = { workspace = true }
+tokio      = { workspace = true }
+tracing    = { workspace = true }
+hex        = { workspace = true }
+
+tauri               = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+reqwest = { version = "0.12", features = ["json"] }
+sha2    = "0.10"

@@ -1,0 +1,23 @@
+[package]
+name    = "hb-relay"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "hb-relay"
+path = "src/main.rs"
+
+[dependencies]
+hb-core     = { path = "../hb-core" }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+thiserror   = { workspace = true }
+anyhow      = { workspace = true }
+chrono      = { workspace = true }
+tokio       = { workspace = true }
+tracing     = { workspace = true }
+
+axum            = "0.7"
+sqlx            = { version = "0.8", features = ["sqlite", "runtime-tokio"] }
+tower-http      = { version = "0.5", features = ["trace"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
