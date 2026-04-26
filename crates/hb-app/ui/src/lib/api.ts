@@ -1,11 +1,19 @@
-import { invoke } from '@tauri-apps/api/core';
+import { invoke as _invoke } from '@tauri-apps/api/core';
+
+const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+
+function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+	if (!isTauri) return Promise.reject(new Error(`Tauri not available (cmd: ${cmd})`));
+	return _invoke<T>(cmd, args);
+}
 import type {
 	CachedPeer,
 	Collection,
 	IdentityInfo,
 	Profile,
 	ReceivedMessage,
-	ScanOptions
+	ScanOptions,
+	ShareSettings,
 } from './types.js';
 
 // ── Identity ─────────────────────────────────────────────────────────────────
@@ -17,6 +25,10 @@ export const getIdentity = () => invoke<IdentityInfo | null>('get_identity');
 export const getHbId = () => invoke<string>('get_hb_id');
 
 export const validateHbId = (hb_id: string) => invoke<boolean>('validate_hb_id', { hb_id });
+
+export const exportKeypair = () => invoke<string>('export_keypair');
+
+export const wipeData = () => invoke<void>('wipe_data');
 
 // ── Profile ───────────────────────────────────────────────────────────────────
 
@@ -57,6 +69,17 @@ export const follow = (hb_id: string) => invoke<void>('follow', { hb_id });
 export const getContacts = () => invoke<CachedPeer[]>('get_contacts');
 
 export const refreshContact = (hb_id: string) => invoke<CachedPeer>('refresh_contact', { hb_id });
+
+// ── Sharing ───────────────────────────────────────────────────────────────────
+
+export const getShareSettings = (slug: string) =>
+	invoke<ShareSettings>('get_share_settings', { slug });
+
+export const saveShareSettings = (slug: string, settings: ShareSettings) =>
+	invoke<void>('save_share_settings', { slug, settings });
+
+export const requestDownload = (peer_hb_id: string, slug: string, path: string) =>
+	invoke<void>('request_download', { peer_hb_id, slug, path });
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 

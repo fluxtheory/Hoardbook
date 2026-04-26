@@ -9,12 +9,28 @@
       "_environment.js"
     ]
   },
+  "_Avatar.js": {
+    "file": "chunks/Avatar.js",
+    "name": "Avatar",
+    "imports": [
+      "_ssr.js",
+      "_icons.js"
+    ]
+  },
   "_CollectionPanel.js": {
     "file": "chunks/CollectionPanel.js",
     "name": "CollectionPanel",
     "imports": [
-      "_ssr.js"
+      "_ssr.js",
+      "_icons.js"
+    ],
+    "css": [
+      "_app/immutable/assets/CollectionPanel.B_z-4_lr.css"
     ]
+  },
+  "_CollectionPanel.svelte_svelte_type_style_lang.js": {
+    "file": "_app/immutable/assets/CollectionPanel.B_z-4_lr.css",
+    "src": "_CollectionPanel.svelte_svelte_type_style_lang.js"
   },
   "_environment.js": {
     "file": "chunks/environment.js",
@@ -23,6 +39,13 @@
   "_exports.js": {
     "file": "chunks/exports.js",
     "name": "exports"
+  },
+  "_icons.js": {
+    "file": "chunks/icons.js",
+    "name": "icons",
+    "imports": [
+      "_index.js"
+    ]
   },
   "_index.js": {
     "file": "chunks/index.js",
@@ -63,13 +86,6 @@
       "_exports.js",
       "_utils.js",
       "_ssr2.js"
-    ]
-  },
-  "_stores2.js": {
-    "file": "chunks/stores2.js",
-    "name": "stores",
-    "imports": [
-      "_index.js"
     ]
   },
   "_utils.js": {
@@ -118,10 +134,11 @@
     "imports": [
       "_ssr.js",
       "_stores.js",
-      "_stores2.js"
+      "_icons.js",
+      "_Avatar.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.CHU2Y1LE.css"
+      "_app/immutable/assets/_layout.uQ3tskWc.css"
     ]
   },
   "src/routes/+page.svelte": {
@@ -131,8 +148,12 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
-      "_stores2.js",
-      "_CollectionPanel.js"
+      "_icons.js",
+      "_CollectionPanel.js",
+      "_Avatar.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.Dz1N4QvU.css"
     ]
   },
   "src/routes/browse/+page.svelte": {
@@ -142,7 +163,11 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
-      "_stores2.js"
+      "_icons.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.NHz3Qd6P.css",
+      "_app/immutable/assets/CollectionPanel.B_z-4_lr.css"
     ]
   },
   "src/routes/chat/+page.svelte": {
@@ -152,7 +177,11 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
-      "_stores2.js"
+      "_icons.js",
+      "_Avatar.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.fbvAc8J1.css"
     ]
   },
   "src/routes/contacts/+page.svelte": {
@@ -162,8 +191,12 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
-      "_stores2.js",
-      "_CollectionPanel.js"
+      "_icons.js",
+      "_CollectionPanel.js",
+      "_Avatar.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.CQ6JVWdC.css"
     ]
   },
   "src/routes/settings/+page.svelte": {
@@ -173,7 +206,11 @@
     "isEntry": true,
     "imports": [
       "_ssr.js",
-      "_stores2.js"
+      "_icons.js",
+      "_Avatar.js"
+    ],
+    "css": [
+      "_app/immutable/assets/_page.BVl7yN6y.css"
     ]
   }
 }

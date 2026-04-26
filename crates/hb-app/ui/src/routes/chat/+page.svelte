@@ -2,6 +2,8 @@
 	import { onMount, tick } from 'svelte';
 	import { contacts, identity, inboxMessages, sentMessages, toast } from '$lib/stores.js';
 	import { getMessages, sendMessage } from '$lib/api.js';
+	import { icons, avatarHue } from '$lib/icons.js';
+	import Avatar from '$lib/components/Avatar.svelte';
 	import type { CachedPeer, ReceivedMessage } from '$lib/types.js';
 
 	let loading = false;
@@ -83,147 +85,117 @@
 		return new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' });
 	}
 
-	// Count unread (received) messages per contact for the sidebar badge.
 	$: unreadCounts = Object.fromEntries(
 		$contacts.map((c) => [c.hb_id, $inboxMessages.filter((m) => m.from === c.hb_id).length])
 	);
 </script>
 
 {#if !$identity}
-	<div class="flex items-center justify-center h-full text-surface-400">
-		<div class="text-center">
-			<p class="text-lg">No identity yet.</p>
-			<a href="/settings" class="btn variant-filled-primary mt-4">Go to Settings →</a>
-		</div>
+	<div class="no-identity">
+		<p>No identity yet.</p>
+		<a href="/settings" class="btn-primary">Go to Settings →</a>
 	</div>
 {:else}
-	<div class="flex h-full">
-		<!-- Contact list -->
-		<div class="w-56 flex-shrink-0 border-r border-surface-700 flex flex-col">
-			<div class="flex items-center justify-between px-4 py-3 border-b border-surface-700">
-				<span class="text-sm font-semibold">Conversations</span>
-				<button
-					class="btn-icon btn-icon-sm variant-ghost"
-					on:click={refreshInbox}
-					title="Refresh inbox"
-					disabled={loading}
-				>
-					{loading ? '…' : '↺'}
+	<div class="chat-frame">
+		<!-- Conversation list -->
+		<div class="convo-sidebar">
+			<div class="convo-header">
+				<span class="convo-title">Conversations</span>
+				<button class="icon-btn" on:click={refreshInbox} disabled={loading} title="Refresh inbox">
+					{@html icons.refresh}
 				</button>
 			</div>
-
-			{#if $contacts.length === 0}
-				<div class="p-4 text-surface-400 text-xs">
-					Add contacts via Browse to start chatting.
+			<div class="convo-search">
+				<div class="search-wrap">
+					<span class="search-icon-sm">{@html icons.search}</span>
+					<input class="search-bare" type="text" placeholder="Search…" />
 				</div>
-			{:else}
-				<ul class="flex-1 overflow-y-auto">
+			</div>
+			<div class="convo-list">
+				{#if $contacts.length === 0}
+					<div class="convo-empty">Add contacts via Browse to start chatting.</div>
+				{:else}
 					{#each $contacts as peer}
-						<li>
-							<button
-								class="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-surface-700 flex items-center gap-2"
-								class:bg-surface-700={selectedPeer?.hb_id === peer.hb_id}
-								class:text-primary-400={selectedPeer?.hb_id === peer.hb_id}
-								on:click={() => selectPeer(peer)}
-							>
-								<!-- Avatar -->
-								<div
-									class="w-7 h-7 rounded-full bg-primary-700 flex items-center justify-center text-xs font-bold flex-shrink-0"
-								>
-									{(peer.profile?.display_name ?? peer.hb_id)[0].toUpperCase()}
+						{@const name = peer.profile?.display_name ?? shortId(peer.hb_id)}
+						{@const initial = name[0]?.toUpperCase() ?? '?'}
+						{@const hue = avatarHue(initial)}
+						{@const unread = unreadCounts[peer.hb_id] ?? 0}
+						{@const active = selectedPeer?.hb_id === peer.hb_id}
+						<button class="convo-item" class:convo-active={active} on:click={() => selectPeer(peer)}>
+							<Avatar letter={initial} size={34} {hue} />
+							<div class="convo-info">
+								<div class="convo-row">
+									<span class="convo-name" class:convo-name-active={active}>{name}</span>
 								</div>
-								<div class="flex-1 min-w-0">
-									<p class="truncate font-medium">
-										{peer.profile?.display_name ?? shortId(peer.hb_id)}
-									</p>
+								<div class="convo-preview-row">
+									{#if unread > 0}
+										<span class="unread-badge">{unread}</span>
+									{/if}
 								</div>
-								{#if unreadCounts[peer.hb_id] > 0}
-									<span
-										class="flex-shrink-0 bg-primary-500 text-white text-xs rounded-full px-1.5 py-0.5"
-									>
-										{unreadCounts[peer.hb_id]}
-									</span>
-								{/if}
-							</button>
-						</li>
+							</div>
+						</button>
 					{/each}
-				</ul>
-			{/if}
+				{/if}
+			</div>
 		</div>
 
-		<!-- Conversation area -->
-		<div class="flex-1 flex flex-col overflow-hidden">
+		<!-- Conversation pane -->
+		<div class="convo-pane">
 			{#if !selectedPeer}
-				<div class="flex-1 flex items-center justify-center text-surface-400 flex-col gap-3 p-8">
-					<p class="text-base">Select a contact to view the conversation.</p>
-					<p class="text-xs text-center max-w-sm text-warning-400">
-						⚠ Messages are stored unencrypted on relay servers and are publicly readable
-						by anyone who knows your Hoardbook ID.
+				<div class="convo-empty-state">
+					<p>Select a contact to view the conversation.</p>
+					<p class="privacy-note">
+						{@html icons.shield} Messages are stored unencrypted on relay servers and are publicly readable.
 					</p>
 				</div>
 			{:else}
 				<!-- Header -->
-				<div class="flex items-center gap-3 px-5 py-3 border-b border-surface-700 flex-shrink-0">
-					<div
-						class="w-8 h-8 rounded-full bg-primary-700 flex items-center justify-center text-sm font-bold"
-					>
-						{(selectedPeer.profile?.display_name ?? selectedPeer.hb_id)[0].toUpperCase()}
+				<div class="pane-header">
+					<Avatar
+						letter={(selectedPeer.profile?.display_name ?? selectedPeer.hb_id)[0].toUpperCase()}
+						size={36}
+						hue={avatarHue((selectedPeer.profile?.display_name ?? selectedPeer.hb_id)[0])}
+					/>
+					<div class="pane-peer-info">
+						<div class="pane-peer-row">
+							<span class="pane-peer-name">{selectedPeer.profile?.display_name ?? shortId(selectedPeer.hb_id)}</span>
+							{#if selectedPeer.online}
+								<span class="pill pill-online"><span class="pill-dot" /> Online</span>
+							{:else}
+								<span class="pill pill-offline">Offline</span>
+							{/if}
+						</div>
+						<span class="mono">{shortId(selectedPeer.hb_id)}</span>
 					</div>
-					<div>
-						<p class="font-semibold text-sm">
-							{selectedPeer.profile?.display_name ?? shortId(selectedPeer.hb_id)}
-						</p>
-						<p class="text-surface-400 text-xs font-mono">{shortId(selectedPeer.hb_id)}</p>
-					</div>
-					<span
-						class="ml-auto text-xs px-2 py-0.5 rounded-full"
-						class:bg-success-700={selectedPeer.online}
-						class:text-success-200={selectedPeer.online}
-						class:bg-surface-700={!selectedPeer.online}
-						class:text-surface-400={!selectedPeer.online}
-					>
-						{selectedPeer.online ? 'Online' : 'Offline'}
-					</span>
+					<button class="btn-ghost btn-sm" on:click={() => {}}>View profile</button>
 				</div>
 
-				<!-- Privacy notice -->
-				<div class="bg-warning-900 border-b border-warning-700 px-5 py-1.5 text-warning-300 text-xs flex-shrink-0">
-					⚠ Messages are unencrypted and publicly readable on relay servers.
+				<!-- Privacy banner -->
+				<div class="privacy-banner">
+					<span class="privacy-icon">{@html icons.shield}</span>
+					<span>Messages are unencrypted and publicly readable on relays. Don't share secrets.</span>
 				</div>
 
 				<!-- Thread -->
-				<div class="flex-1 overflow-y-auto p-5 space-y-3" bind:this={threadEl}>
+				<div class="thread" bind:this={threadEl}>
 					{#if conversation.length === 0}
-						<p class="text-surface-400 text-sm text-center pt-8">No messages yet. Say hello!</p>
+						<p class="thread-empty">No messages yet. Say hello!</p>
 					{:else}
 						{#each conversation as msg, i}
 							{@const isMe = msg.from === myId}
 							{@const prevMsg = i > 0 ? conversation[i - 1] : null}
-							{@const showDate =
-								!prevMsg || formatDate(msg.sent_at) !== formatDate(prevMsg.sent_at)}
-
+							{@const showDate = !prevMsg || formatDate(msg.sent_at) !== formatDate(prevMsg.sent_at)}
 							{#if showDate}
-								<div class="text-center text-surface-500 text-xs py-2">
-									{formatDate(msg.sent_at)}
+								<div class="day-marker">
+									<div class="day-line" />
+									<span class="day-label">{formatDate(msg.sent_at)}</span>
+									<div class="day-line" />
 								</div>
 							{/if}
-
-							<div class="flex" class:justify-end={isMe}>
-								<div
-									class="max-w-xs lg:max-w-md px-3 py-2 rounded-2xl text-sm"
-									class:bg-primary-600={isMe}
-									class:text-white={isMe}
-									class:rounded-br-sm={isMe}
-									class:bg-surface-700={!isMe}
-									class:text-surface-100={!isMe}
-									class:rounded-bl-sm={!isMe}
-								>
-									<p class="whitespace-pre-wrap break-words">{msg.content}</p>
-									<p
-										class="text-xs mt-1 opacity-60 text-right"
-									>
-										{formatTime(msg.sent_at)}
-									</p>
+							<div class="bubble-wrap" class:bubble-me={isMe}>
+								<div class="bubble" class:bubble-sent={isMe} class:bubble-recv={!isMe}>
+									<p class="bubble-text">{msg.content}</p>
+									<span class="bubble-time">{formatTime(msg.sent_at)}</span>
 								</div>
 							</div>
 						{/each}
@@ -231,24 +203,315 @@
 				</div>
 
 				<!-- Compose -->
-				<div class="border-t border-surface-700 p-3 flex gap-2 flex-shrink-0">
-					<textarea
-						class="textarea flex-1 resize-none text-sm"
-						rows="2"
-						placeholder="Type a message… (Enter to send, Shift+Enter for newline)"
-						bind:value={draft}
-						on:keydown={handleKeydown}
-						disabled={sending}
-					></textarea>
-					<button
-						class="btn variant-filled-primary self-end"
-						on:click={handleSend}
-						disabled={!draft.trim() || sending}
-					>
-						{sending ? '…' : 'Send'}
-					</button>
+				<div class="composer">
+					<div class="compose-box">
+						<div class="compose-area" contenteditable="false">
+							<textarea
+								class="compose-input"
+								placeholder="Type a message…"
+								bind:value={draft}
+								on:keydown={handleKeydown}
+								disabled={sending}
+								rows="2"
+							></textarea>
+						</div>
+						<div class="compose-footer">
+							<div class="compose-tools">
+								<span class="tool-icon">{@html icons.link}</span>
+								<span class="tool-icon">{@html icons.file}</span>
+							</div>
+							<button
+								class="btn-primary btn-sm btn-icon"
+								on:click={handleSend}
+								disabled={!draft.trim() || sending}
+							>
+								{sending ? '…' : 'Send'}
+								<span>{@html icons.send}</span>
+							</button>
+						</div>
+					</div>
 				</div>
 			{/if}
 		</div>
 	</div>
 {/if}
+
+<style>
+	.no-identity {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: 100%;
+		gap: 12px;
+		color: var(--fg-muted);
+	}
+
+	.chat-frame { display: flex; height: 100%; overflow: hidden; }
+
+	/* Conversation list sidebar */
+	.convo-sidebar {
+		width: 240px;
+		flex-shrink: 0;
+		border-right: 1px solid var(--border);
+		display: flex;
+		flex-direction: column;
+		background: var(--bg);
+	}
+
+	.convo-header {
+		padding: 16px 16px 10px;
+		border-bottom: 1px solid var(--border);
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.convo-title { font-size: 14px; font-weight: 600; }
+
+	.icon-btn {
+		background: transparent;
+		border: none;
+		cursor: pointer;
+		color: var(--fg-muted);
+		display: flex;
+		padding: 2px;
+	}
+	.icon-btn:disabled { opacity: 0.5; }
+
+	.convo-search { padding: 10px 12px; border-bottom: 1px solid var(--divider); }
+
+	.search-wrap {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0 10px;
+		height: 30px;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		border-radius: 7px;
+	}
+
+	.search-icon-sm { color: var(--fg-dim); display: flex; }
+
+	.search-bare {
+		flex: 1;
+		background: transparent;
+		border: none;
+		outline: none;
+		font-size: 12.5px;
+		color: var(--fg);
+	}
+	.search-bare::placeholder { color: var(--fg-dim); }
+
+	.convo-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
+
+	.convo-empty { padding: 12px; font-size: 12px; color: var(--fg-dim); }
+
+	.convo-item {
+		width: 100%;
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		padding: 10px;
+		background: transparent;
+		border: none;
+		border-radius: 7px;
+		cursor: pointer;
+		color: inherit;
+		font-family: inherit;
+		margin-bottom: 2px;
+		text-align: left;
+	}
+	.convo-item:hover { background: var(--bg-elev1); }
+	.convo-active { background: var(--bg-elev2); }
+
+	.convo-info { flex: 1; min-width: 0; }
+
+	.convo-row { display: flex; justify-content: space-between; align-items: baseline; gap: 4px; }
+
+	.convo-name { font-size: 13px; font-weight: 500; color: var(--fg); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.convo-name-active { font-weight: 600; }
+
+	.convo-preview-row { display: flex; align-items: center; margin-top: 2px; gap: 4px; }
+
+	.unread-badge {
+		font-size: 10px;
+		padding: 1px 6px;
+		border-radius: 999px;
+		background: var(--accent);
+		color: var(--accent-text);
+		font-weight: 700;
+		min-width: 16px;
+		text-align: center;
+		font-feature-settings: 'tnum';
+	}
+
+	/* Conversation pane */
+	.convo-pane {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		background: var(--bg-elev1);
+	}
+
+	.convo-empty-state {
+		flex: 1;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 12px;
+		padding: 32px;
+		color: var(--fg-muted);
+	}
+
+	.privacy-note { font-size: 12px; color: var(--fg-dim); text-align: center; max-width: 320px; }
+
+	.pane-header {
+		padding: 12px 18px;
+		border-bottom: 1px solid var(--border);
+		display: flex;
+		gap: 12px;
+		align-items: center;
+		background: var(--bg);
+	}
+
+	.pane-peer-info { flex: 1; min-width: 0; }
+
+	.pane-peer-row { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+
+	.pane-peer-name { font-weight: 600; font-size: 14px; }
+
+	.mono { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+
+	.privacy-banner {
+		padding: 8px 18px;
+		background: var(--accent-soft);
+		border-bottom: 1px solid var(--border);
+		font-size: 11.5px;
+		color: var(--fg);
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.privacy-icon { color: var(--accent); display: flex; }
+
+	.thread {
+		flex: 1;
+		padding: 20px 24px;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.thread-empty { color: var(--fg-dim); font-size: 13px; text-align: center; padding-top: 32px; }
+
+	.day-marker { display: flex; align-items: center; gap: 10px; margin: 12px 0 8px; }
+
+	.day-line { flex: 1; height: 1px; background: var(--divider); }
+
+	.day-label { font-size: 10.5px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+
+	.bubble-wrap { display: flex; margin-bottom: 4px; }
+	.bubble-me { justify-content: flex-end; }
+
+	.bubble {
+		max-width: 70%;
+		padding: 8px 12px;
+		border-radius: 14px;
+	}
+
+	.bubble-sent {
+		background: var(--accent);
+		color: var(--accent-text);
+		border-radius: 14px 14px 4px 14px;
+	}
+
+	.bubble-recv {
+		background: var(--bg-elev2);
+		color: var(--fg);
+		border: 1px solid var(--border);
+		border-radius: 14px 14px 14px 4px;
+	}
+
+	.bubble-text { font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; margin: 0; }
+
+	.bubble-time { font-size: 10px; color: inherit; opacity: 0.6; display: block; text-align: right; margin-top: 3px; }
+
+	.composer {
+		padding: 14px;
+		border-top: 1px solid var(--border);
+		background: var(--bg);
+	}
+
+	.compose-box {
+		background: var(--bg-elev2);
+		border: 1px solid var(--border);
+		border-radius: 9px;
+		padding: 10px 12px;
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.compose-input {
+		width: 100%;
+		background: transparent;
+		border: none;
+		outline: none;
+		font-family: var(--font-ui);
+		font-size: 13px;
+		color: var(--fg);
+		resize: none;
+		min-height: 36px;
+	}
+	.compose-input::placeholder { color: var(--fg-dim); }
+
+	.compose-footer { display: flex; justify-content: space-between; align-items: center; }
+
+	.compose-tools { display: flex; gap: 12px; color: var(--fg-muted); }
+
+	.tool-icon { display: flex; cursor: pointer; }
+
+	/* Pills */
+	.pill {
+		display: inline-flex; align-items: center; gap: 5px;
+		font-size: 10.5px; font-weight: 500;
+		padding: 2px 8px; border-radius: 999px;
+	}
+	.pill-dot { width: 5px; height: 5px; border-radius: 50%; }
+	.pill-online {
+		color: var(--online);
+		background: color-mix(in oklch, var(--online) 12%, transparent);
+		border: 1px solid color-mix(in oklch, var(--online) 20%, transparent);
+	}
+	.pill-online .pill-dot { background: var(--online); }
+	.pill-offline {
+		color: var(--fg-muted);
+		background: color-mix(in oklch, var(--fg-muted) 12%, transparent);
+		border: 1px solid color-mix(in oklch, var(--fg-muted) 20%, transparent);
+	}
+
+	/* Buttons */
+	.btn-primary {
+		display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+		padding: 8px 14px; font-family: var(--font-ui); font-size: 13px; font-weight: 600;
+		color: var(--accent-text); background: var(--accent);
+		border: 1px solid var(--accent); border-radius: 7px;
+		cursor: pointer; white-space: nowrap; user-select: none; line-height: 1;
+	}
+	.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+	.btn-ghost {
+		display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+		padding: 8px 14px; font-family: var(--font-ui); font-size: 13px; font-weight: 500;
+		color: var(--fg-muted); background: transparent;
+		border: 1px solid transparent; border-radius: 7px;
+		cursor: pointer; white-space: nowrap; user-select: none; line-height: 1;
+	}
+	.btn-sm { padding: 5px 11px; font-size: 12px; }
+	.btn-icon { gap: 5px; }
+</style>

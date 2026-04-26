@@ -65,6 +65,8 @@ pub fn run() {
             commands::identity::get_identity,
             commands::identity::get_hb_id,
             commands::identity::validate_hb_id,
+            commands::identity::export_keypair,
+            commands::identity::wipe_data,
             commands::profile::save_profile,
             commands::profile::get_profile,
             commands::profile::publish_profile,
@@ -80,6 +82,9 @@ pub fn run() {
             commands::settings::save_settings,
             commands::chat::send_message,
             commands::chat::get_messages,
+            commands::sharing::get_share_settings,
+            commands::sharing::save_share_settings,
+            commands::sharing::request_download,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Hoardbook");

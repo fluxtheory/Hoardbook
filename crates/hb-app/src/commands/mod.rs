@@ -4,3 +4,4 @@ pub mod collection;
 pub mod identity;
 pub mod profile;
 pub mod settings;
+pub mod sharing;

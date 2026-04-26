@@ -62,3 +62,11 @@ export interface ScanOptions {
 	depth: number;
 	exclude: string[];
 }
+
+export interface ShareSettings {
+	enabled: boolean;
+	allowed_paths: string[];
+	speed_cap_kbps?: number;
+	download_limit?: number;
+	require_follow: boolean;
+}

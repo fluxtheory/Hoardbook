@@ -5,7 +5,7 @@ use tauri::State;
 use crate::{
     error::{CmdResult, cmd_err},
     store::DataStore,
-    SharedIdentity,
+    SharedIdentity, SharedRelay,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -94,4 +94,27 @@ pub async fn get_hb_id(identity: State<'_, SharedIdentity>) -> CmdResult<String>
 #[tauri::command]
 pub async fn validate_hb_id(hb_id: String) -> CmdResult<bool> {
     Ok(hb_id_decode(&hb_id).is_ok())
+}
+
+/// Export the stored keypair as a JSON string for the user to save to a file.
+#[tauri::command]
+pub async fn export_keypair(store: State<'_, DataStore>) -> CmdResult<String> {
+    let stored = store
+        .load_keypair()
+        .map_err(cmd_err)?
+        .ok_or("No keypair to export.")?;
+    serde_json::to_string_pretty(&stored).map_err(cmd_err)
+}
+
+/// Wipe all local data and reset in-memory state. Irreversible.
+#[tauri::command]
+pub async fn wipe_data(
+    store: State<'_, DataStore>,
+    identity: State<'_, SharedIdentity>,
+    relay: State<'_, SharedRelay>,
+) -> CmdResult<()> {
+    store.wipe().map_err(cmd_err)?;
+    *identity.write().await = None;
+    relay.set_relay_urls(vec![]);
+    Ok(())
 }

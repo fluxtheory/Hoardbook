@@ -1,36 +1,56 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import type { Collection } from '../types.js';
 	import DirItem from './DirItem.svelte';
+	import { icons } from '$lib/icons.js';
 
 	export let collection: Collection;
+	/** When set, file items show download buttons */
+	export let peerId: string | undefined = undefined;
+
+	const dispatch = createEventDispatcher<{ download: { peerId: string; slug: string; path: string } }>();
 
 	let expanded = false;
+
+	$: fmt = collection.content_type[0] ?? '';
+
+	function handleDownload(path: string) {
+		if (peerId) dispatch('download', { peerId, slug: collection.slug, path });
+	}
 </script>
 
-<div class="border border-surface-700 rounded-lg overflow-hidden">
-	<button
-		class="w-full flex items-center justify-between px-4 py-3 bg-surface-800 hover:bg-surface-700 transition-colors text-left"
-		on:click={() => (expanded = !expanded)}
-	>
-		<div>
-			<div class="font-medium">{collection.path_alias}</div>
-			<div class="text-xs text-surface-400 mt-0.5">
-				{collection.item_count} items
-				{#if collection.est_size} · ~{collection.est_size}{/if}
-				{#if collection.content_type.length > 0} · {collection.content_type.join(', ')}{/if}
+<div class="panel">
+	<button class="panel-header" on:click={() => (expanded = !expanded)}>
+		<div class="panel-left">
+			<div class="folder-icon">{@html icons.folder}</div>
+			<div class="panel-info">
+				<div class="panel-name">{collection.path_alias}</div>
+				<div class="panel-meta">
+					<span class="tnum">{collection.item_count.toLocaleString()} items</span>
+					{#if collection.est_size}
+						<span class="dot">·</span>
+						<span class="tnum">{collection.est_size}</span>
+					{/if}
+					{#if fmt}
+						<span class="dot">·</span>
+						<span class="mono-sm">{fmt}</span>
+					{/if}
+				</div>
 			</div>
 		</div>
-		<span class="text-surface-400 text-sm">{expanded ? '▲' : '▼'}</span>
+		<div class="panel-right">
+			<span class="chevron" class:chevron-open={expanded}>{@html icons.chevronDown}</span>
+		</div>
 	</button>
 
 	{#if expanded}
-		<div class="p-3 bg-surface-900 max-h-96 overflow-y-auto">
+		<div class="panel-body">
 			{#if collection.listing.length === 0}
-				<p class="text-surface-500 text-sm">Empty directory</p>
+				<span class="empty">Empty directory</span>
 			{:else}
-				<ul class="text-sm space-y-0.5">
+				<ul class="dir-list">
 					{#each collection.listing as item}
-						<DirItem {item} depth={0} />
+						<DirItem {item} depth={0} onDownload={peerId ? handleDownload : undefined} />
 					{/each}
 				</ul>
 			{/if}
@@ -39,3 +59,81 @@
 
 	<slot />
 </div>
+
+<style>
+	.panel {
+		background: var(--bg-elev1);
+		border: 1px solid var(--border);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.panel-header {
+		width: 100%;
+		padding: 12px 14px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		cursor: pointer;
+		background: transparent;
+		border: none;
+		color: inherit;
+		font-family: inherit;
+		text-align: left;
+	}
+
+	.panel-header:hover { background: var(--bg-elev2); }
+
+	.panel-left {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		min-width: 0;
+		flex: 1;
+	}
+
+	.folder-icon {
+		width: 32px; height: 32px;
+		border-radius: 7px;
+		background: var(--bg-elev3);
+		color: var(--fg-muted);
+		display: flex; align-items: center; justify-content: center;
+		border: 1px solid var(--border);
+		flex-shrink: 0;
+	}
+
+	.panel-info { min-width: 0; }
+
+	.panel-name { font-size: 13.5px; font-weight: 600; color: var(--fg); }
+
+	.panel-meta {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		font-size: 11.5px;
+		color: var(--fg-muted);
+		margin-top: 2px;
+	}
+
+	.dot { color: var(--fg-dim); }
+
+	.tnum { font-feature-settings: 'tnum'; }
+
+	.mono-sm { font-family: var(--font-mono); font-size: 11px; color: var(--fg-muted); }
+
+	.panel-right { display: flex; align-items: center; color: var(--fg-muted); }
+
+	.chevron { display: flex; transition: transform 0.15s; }
+
+	.chevron-open { transform: rotate(180deg); }
+
+	.panel-body {
+		border-top: 1px solid var(--divider);
+		padding: 10px 14px 14px;
+		background: var(--bg);
+	}
+
+	.dir-list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 11.5px; }
+
+	.empty { font-size: 12px; color: var(--fg-dim); }
+</style>

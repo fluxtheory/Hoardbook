@@ -1,3 +1,40 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ── Design tokens ────────────────────────────────────────────────── */
+:root {
+  --bg:            oklch(0.16 0.005 260);
+  --bg-elev1:      oklch(0.20 0.006 260);
+  --bg-elev2:      oklch(0.235 0.008 260);
+  --bg-elev3:      oklch(0.27 0.009 260);
+  --bg-input:      oklch(0.18 0.006 260);
+  --fg:            oklch(0.97 0.004 260);
+  --fg-muted:      oklch(0.68 0.008 260);
+  --fg-dim:        oklch(0.50 0.008 260);
+  --border:        oklch(1 0 0 / 0.07);
+  --border-strong: oklch(1 0 0 / 0.13);
+  --divider:       oklch(1 0 0 / 0.05);
+  --online:        oklch(0.78 0.16 150);
+  --accent:        oklch(0.78 0.14 70);
+  --accent-soft:   oklch(0.78 0.14 70 / 0.14);
+  --accent-text:   oklch(0.16 0.01 260);
+  --error:         oklch(0.65 0.18 25);
+  --font-ui:       'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:     'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  font-family: var(--font-ui);
+  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+::selection { background: oklch(0.78 0.14 70 / 0.3); }

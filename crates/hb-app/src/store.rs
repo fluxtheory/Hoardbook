@@ -150,6 +150,10 @@ impl DataStore {
         Ok(results)
     }
 
+    pub fn share_settings_path(&self, slug: &str) -> PathBuf {
+        self.base.join("sharing").join(format!("{slug}.json"))
+    }
+
     // -- Settings ------------------------------------------------------------
 
     pub fn save_settings(&self, settings: &crate::commands::settings::Settings) -> Result<()> {
@@ -158,6 +162,40 @@ impl DataStore {
 
     pub fn load_settings(&self) -> Result<Option<crate::commands::settings::Settings>> {
         read_json(&self.settings_path()).context("loading settings")
+    }
+
+    // -- Share settings ------------------------------------------------------
+
+    pub fn save_share_settings(
+        &self,
+        slug: &str,
+        settings: &crate::commands::sharing::ShareSettings,
+    ) -> Result<()> {
+        write_json(&self.share_settings_path(slug), settings).context("saving share settings")
+    }
+
+    pub fn load_share_settings(
+        &self,
+        slug: &str,
+    ) -> Result<Option<crate::commands::sharing::ShareSettings>> {
+        read_json(&self.share_settings_path(slug)).context("loading share settings")
+    }
+
+    // -- Wipe ----------------------------------------------------------------
+
+    /// Delete all persisted data. In-memory state must be cleared by the caller.
+    pub fn wipe(&self) -> Result<()> {
+        for subdir in &["identity", "collections", "contacts", "sharing"] {
+            let path = self.base.join(subdir);
+            if path.exists() {
+                std::fs::remove_dir_all(&path)?;
+            }
+        }
+        let settings = self.settings_path();
+        if settings.exists() {
+            std::fs::remove_file(&settings)?;
+        }
+        Ok(())
     }
 
     // -- Contacts ------------------------------------------------------------
