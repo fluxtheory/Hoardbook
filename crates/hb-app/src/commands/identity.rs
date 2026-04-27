@@ -106,6 +106,18 @@ pub async fn export_keypair(store: State<'_, DataStore>) -> CmdResult<String> {
     serde_json::to_string_pretty(&stored).map_err(cmd_err)
 }
 
+/// Write the exported keypair JSON to a user-chosen absolute path.
+#[tauri::command]
+pub async fn save_keypair_file(path: String, store: State<'_, DataStore>) -> CmdResult<()> {
+    let stored = store
+        .load_keypair()
+        .map_err(cmd_err)?
+        .ok_or("No keypair to export.")?;
+    let json = serde_json::to_string_pretty(&stored).map_err(cmd_err)?;
+    std::fs::write(&path, json).map_err(cmd_err)?;
+    Ok(())
+}
+
 /// Wipe all local data and reset in-memory state. Irreversible.
 #[tauri::command]
 pub async fn wipe_data(

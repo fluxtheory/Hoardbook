@@ -28,6 +28,8 @@ export const validateHbId = (hb_id: string) => invoke<boolean>('validate_hb_id',
 
 export const exportKeypair = () => invoke<string>('export_keypair');
 
+export const saveKeypairFile = (path: string) => invoke<void>('save_keypair_file', { path });
+
 export const wipeData = () => invoke<void>('wipe_data');
 
 // ── Profile ───────────────────────────────────────────────────────────────────

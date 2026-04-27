@@ -66,6 +66,7 @@ pub fn run() {
             commands::identity::get_hb_id,
             commands::identity::validate_hb_id,
             commands::identity::export_keypair,
+            commands::identity::save_keypair_file,
             commands::identity::wipe_data,
             commands::profile::save_profile,
             commands::profile::get_profile,

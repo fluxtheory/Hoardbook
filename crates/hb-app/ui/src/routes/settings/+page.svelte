@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { generateKeypair, getHbId, getSettings, saveSettings, exportKeypair, wipeData } from '$lib/api.js';
+	import { generateKeypair, getHbId, getSettings, saveSettings, saveKeypairFile, wipeData } from '$lib/api.js';
+	import { save } from '@tauri-apps/plugin-dialog';
 	import { identity, profile, collections, contacts, toast } from '$lib/stores.js';
 	import { icons, avatarHue } from '$lib/icons.js';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -52,15 +53,13 @@
 	async function handleExport() {
 		exporting = true;
 		try {
-			const json = await exportKeypair();
-			const blob = new Blob([json], { type: 'application/json' });
-			const url = URL.createObjectURL(blob);
-			const a = document.createElement('a');
-			a.href = url;
-			a.download = 'hoardbook-keypair.json';
-			a.click();
-			URL.revokeObjectURL(url);
-			toast('Keypair exported — store this file somewhere safe');
+			const path = await save({
+				defaultPath: 'hoardbook-keypair.json',
+				filters: [{ name: 'JSON', extensions: ['json'] }],
+			});
+			if (!path) return;
+			await saveKeypairFile(path);
+			toast(`Keypair saved to ${path} — contains your private key, guard this file`);
 		} catch (e) {
 			toast(String(e), 'error');
 		} finally {
@@ -319,7 +318,7 @@
 
 	.id-hint { font-size: 11.5px; color: var(--fg-dim); }
 
-	.id-btns { display: flex; gap: 8px; }
+	.id-btns { display: flex; gap: 8px; flex-shrink: 0; }
 
 	.no-id-text { font-size: 13px; color: var(--fg-muted); }
 
@@ -476,6 +475,7 @@
 		color: var(--fg); background: transparent;
 		border: 1px solid var(--border-strong); border-radius: 7px;
 		cursor: pointer; white-space: nowrap; user-select: none; line-height: 1;
+		flex-shrink: 0; min-width: max-content;
 	}
 	.btn-default:disabled { opacity: 0.5; cursor: not-allowed; }
 	.btn-ghost {

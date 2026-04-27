@@ -13,6 +13,7 @@
 	let publishing = false;
 	let shareSlug = '';
 	let shareOpen = false;
+	let langInput = '';
 
 	let form: Profile = {
 		display_name: '',
@@ -96,6 +97,23 @@
 	}
 
 	$: totalItems = $collections.reduce((s, c) => s + c.item_count, 0);
+
+	function handleLangKey(e: KeyboardEvent) {
+		if (e.key === 'Enter' || e.key === ',') {
+			e.preventDefault();
+			const tag = langInput.trim().replace(/,$/, '').toLowerCase();
+			if (tag && !form.languages.includes(tag)) {
+				form.languages = [...form.languages, tag];
+			}
+			langInput = '';
+		} else if (e.key === 'Backspace' && !langInput && form.languages.length > 0) {
+			form.languages = form.languages.slice(0, -1);
+		}
+	}
+
+	function removeLang(i: number) {
+		form.languages = form.languages.filter((_, idx) => idx !== i);
+	}
 </script>
 
 {#if !$identity}
@@ -170,19 +188,24 @@
 				</div>
 
 				<div class="field">
-					<div class="field-label-row">
-						<label class="field-label">Languages</label>
-						<span class="field-hint">ISO codes</span>
+					<label class="field-label">Languages</label>
+					<!-- svelte-ignore a11y-click-events-have-key-events -->
+					<!-- svelte-ignore a11y-no-static-element-interactions -->
+					<div class="tag-wrap" on:click={(e) => { if (e.target === e.currentTarget) e.currentTarget.querySelector('input')?.focus(); }}>
+						{#each form.languages as lang, i}
+							<span class="lang-tag">
+								{lang}
+								<button class="lang-x" on:click={() => removeLang(i)} title="Remove">×</button>
+							</span>
+						{/each}
+						<input
+							class="lang-input"
+							type="text"
+							placeholder={form.languages.length === 0 ? 'en, jp, de…' : 'Add…'}
+							bind:value={langInput}
+							on:keydown={handleLangKey}
+						/>
 					</div>
-					<input
-						class="hb-input"
-						type="text"
-						placeholder="en, jp, de"
-						value={form.languages.join(', ')}
-						on:change={(e) => {
-							form.languages = e.currentTarget.value.split(',').map((s) => s.trim()).filter(Boolean);
-						}}
-					/>
 				</div>
 
 				<div class="field">
@@ -347,10 +370,6 @@
 
 	.field-row .field { flex: 1; }
 
-	.field-label-row { display: flex; justify-content: space-between; align-items: baseline; }
-
-	.field-hint { font-size: 10.5px; color: var(--fg-dim); }
-
 	/* Collections pane */
 	.collections-pane {
 		flex: 1;
@@ -460,6 +479,59 @@
 	.hb-input::placeholder { color: var(--fg-dim); }
 
 	.hb-input-mono { font-family: var(--font-mono); }
+
+	/* Language tag input */
+	.tag-wrap {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 5px;
+		min-height: 34px;
+		padding: 5px 8px;
+		background: var(--bg-input);
+		border: 1px solid var(--border);
+		border-radius: 7px;
+		align-items: center;
+		cursor: text;
+		transition: border-color 0.1s;
+	}
+	.tag-wrap:focus-within { border-color: var(--accent); }
+	.lang-tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+		background: var(--bg-elev2);
+		border: 1px solid var(--border);
+		border-radius: 4px;
+		padding: 1px 5px 1px 7px;
+		font-size: 11.5px;
+		color: var(--fg);
+		white-space: nowrap;
+		font-family: var(--font-mono);
+	}
+	.lang-x {
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: var(--fg-dim);
+		font-size: 14px;
+		line-height: 1;
+		padding: 0;
+		display: flex;
+		align-items: center;
+	}
+	.lang-x:hover { color: var(--fg); }
+	.lang-input {
+		flex: 1;
+		min-width: 50px;
+		background: transparent;
+		border: none;
+		outline: none;
+		font-family: var(--font-ui);
+		font-size: 13px;
+		color: var(--fg);
+		padding: 0;
+	}
+	.lang-input::placeholder { color: var(--fg-dim); }
 
 	.hb-textarea {
 		height: auto;
