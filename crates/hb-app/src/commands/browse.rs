@@ -34,6 +34,16 @@ pub async fn get_contacts(store: State<'_, DataStore>) -> CmdResult<Vec<CachedPe
 }
 
 #[tauri::command]
+pub async fn unfollow_contact(
+    hb_id: String,
+    store: State<'_, DataStore>,
+) -> CmdResult<()> {
+    hb_id_decode(&hb_id).map_err(cmd_err)?;
+    let hash = CachedPeer::pubkey_hash(&hb_id);
+    store.delete_contact(&hash).map_err(cmd_err)
+}
+
+#[tauri::command]
 pub async fn refresh_contact(
     hb_id: String,
     relay: State<'_, SharedRelay>,

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use tauri::State;
 
 use crate::{
+    SharedEndpoint,
     error::{CmdResult, cmd_err},
     store::DataStore,
 };
@@ -9,7 +10,9 @@ use crate::{
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ShareSettings {
     pub enabled: bool,
-    /// Paths (relative to collection root) that are downloadable. Empty = all files.
+    /// Absolute filesystem path to the collection root directory.
+    pub root_path: Option<String>,
+    /// Relative paths (within root) that are downloadable. Empty = all files allowed.
     pub allowed_paths: Vec<String>,
     /// Speed cap in KB/s. None = unlimited.
     pub speed_cap_kbps: Option<u32>,
@@ -36,13 +39,31 @@ pub async fn save_share_settings(
     store.save_share_settings(&slug, &settings).map_err(cmd_err)
 }
 
-/// Request a file download from a peer's collection.
-/// Stub: actual transfer requires iroh P2P transport (Phase 2).
+/// Download a file from a peer's shared collection via direct iroh P2P connection.
 #[tauri::command]
 pub async fn request_download(
-    _peer_hb_id: String,
-    _slug: String,
-    _path: String,
-) -> CmdResult<()> {
-    Err("Direct file transfer requires a live P2P connection (iroh). This will be available once the peer is reachable.".into())
+    peer_hb_id: String,
+    peer_node_addr: Option<String>,
+    slug: String,
+    path: String,
+    save_path: String,
+    endpoint: State<'_, SharedEndpoint>,
+) -> CmdResult<u64> {
+    let _ = peer_hb_id; // used for logging / future require_follow checks
+
+    let addr_json = peer_node_addr.ok_or_else(|| {
+        "Peer has no P2P address — they need to be online and running a recent Hoardbook version.".to_string()
+    })?;
+
+    // Clone the endpoint Arc so we don't hold the read lock during the transfer.
+    let ep = {
+        let guard = endpoint.read().await;
+        guard.as_ref()
+            .ok_or_else(|| "P2P transport not initialised. Generate or import a keypair first.".to_string())?
+            .clone()
+    };
+
+    crate::transfer::download_file(&ep, &addr_json, &slug, &path, &save_path)
+        .await
+        .map_err(|e| e.to_string())
 }

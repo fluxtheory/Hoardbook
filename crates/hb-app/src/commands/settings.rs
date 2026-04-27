@@ -7,9 +7,13 @@ use crate::{
     SharedRelay,
 };
 
+fn default_true() -> bool { true }
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub relay_urls: Vec<String>,
+    #[serde(default = "default_true")]
+    pub allow_dms: bool,
 }
 
 #[tauri::command]

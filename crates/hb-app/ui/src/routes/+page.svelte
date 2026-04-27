@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { saveProfile, publishProfile, publishCollection } from '$lib/api.js';
+	import { saveProfile, publishProfile, publishCollection, getShareSettings } from '$lib/api.js';
 	import { profile, collections, identity, toast } from '$lib/stores.js';
 	import { icons, avatarHue } from '$lib/icons.js';
 	import CollectionPanel from '$lib/components/CollectionPanel.svelte';
@@ -9,6 +9,9 @@
 	import type { Collection, Profile } from '$lib/types.js';
 
 	let scanOpen = false;
+	let scanTitle = 'Add collection';
+	let scanInitialPath = '';
+	let scanInitialAlias = '';
 	let saving = false;
 	let publishing = false;
 	let shareSlug = '';
@@ -94,6 +97,25 @@
 	function openShare(slug: string) {
 		shareSlug = slug;
 		shareOpen = true;
+	}
+
+	function openAddScan() {
+		scanTitle = 'Add collection';
+		scanInitialPath = '';
+		scanInitialAlias = '';
+		scanOpen = true;
+	}
+
+	async function openRescan(col: import('$lib/types.js').Collection) {
+		scanTitle = 'Rescan collection';
+		scanInitialAlias = col.path_alias;
+		try {
+			const share = await getShareSettings(col.slug);
+			scanInitialPath = share?.root_path ?? '';
+		} catch {
+			scanInitialPath = '';
+		}
+		scanOpen = true;
 	}
 
 	$: totalItems = $collections.reduce((s, c) => s + c.item_count, 0);
@@ -222,7 +244,7 @@
 					<div class="coll-title">Collections</div>
 					<div class="coll-sub">{$collections.length} published · {totalItems.toLocaleString()} items</div>
 				</div>
-				<button class="btn-add" on:click={() => (scanOpen = true)}>
+				<button class="btn-add" on:click={openAddScan}>
 					<span>{@html icons.plus}</span>Add collection
 				</button>
 			</div>
@@ -246,6 +268,7 @@
 					{#each $collections as col}
 						<CollectionPanel collection={col}>
 							<div class="coll-actions">
+								<button class="btn-ghost btn-sm" on:click={() => openRescan(col)}>Rescan</button>
 								<button class="btn-ghost btn-sm" on:click={() => openShare(col.slug)}>Share</button>
 								<button class="btn-ghost btn-sm" on:click={() => handlePublishCollection(col.slug)}>Publish</button>
 							</div>
@@ -256,7 +279,7 @@
 		</div>
 	</div>
 
-	<ScanDialog bind:open={scanOpen} on:scanned={onScanned} />
+	<ScanDialog bind:open={scanOpen} title={scanTitle} initialPath={scanInitialPath} initialAlias={scanInitialAlias} on:scanned={onScanned} />
 	<ShareSettingsDialog bind:open={shareOpen} slug={shareSlug} />
 {/if}
 

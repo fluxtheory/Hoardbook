@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { generateKeypair, getHbId, getSettings, saveSettings, saveKeypairFile, wipeData } from '$lib/api.js';
-	import { save } from '@tauri-apps/plugin-dialog';
+	import { generateKeypair, getHbId, getSettings, saveSettings, saveKeypairFile, importKeypair, wipeData } from '$lib/api.js';
+	import { save, open as openFileDialog } from '@tauri-apps/plugin-dialog';
 	import { identity, profile, collections, contacts, toast } from '$lib/stores.js';
 	import { icons, avatarHue } from '$lib/icons.js';
 	import Avatar from '$lib/components/Avatar.svelte';
@@ -9,12 +9,14 @@
 	let generating = false;
 	let copied = false;
 	let exporting = false;
+	let importing = false;
 
 	let relayUrls: string[] = [];
 	let newRelay = '';
 	let savingRelays = false;
 
 	let allowDms = true;
+	let settingsLoaded = false;
 
 	let wipeConfirm = false;
 	let wiping = false;
@@ -23,7 +25,9 @@
 		try {
 			const s = await getSettings();
 			relayUrls = s.relay_urls;
-		} catch { }
+			allowDms = s.allow_dms ?? true;
+			settingsLoaded = true;
+		} catch { settingsLoaded = true; }
 	});
 
 	async function handleGenerate() {
@@ -67,6 +71,33 @@
 		}
 	}
 
+	async function handleImport() {
+		importing = true;
+		try {
+			const path = await openFileDialog({
+				multiple: false,
+				filters: [{ name: 'Hoardbook keypair', extensions: ['json'] }],
+			});
+			if (!path) return;
+			const info = await importKeypair(path as string);
+			identity.set(info);
+			toast('Keypair imported — your identity has been restored');
+		} catch (e) {
+			toast(String(e), 'error');
+		} finally {
+			importing = false;
+		}
+	}
+
+	async function toggleAllowDms() {
+		allowDms = !allowDms;
+		try {
+			await saveSettings({ relay_urls: relayUrls, allow_dms: allowDms });
+		} catch (e) {
+			toast(String(e), 'error');
+		}
+	}
+
 	async function handleWipe() {
 		wiping = true;
 		try {
@@ -98,7 +129,7 @@
 	async function handleSaveRelays() {
 		savingRelays = true;
 		try {
-			await saveSettings({ relay_urls: relayUrls });
+			await saveSettings({ relay_urls: relayUrls, allow_dms: allowDms });
 			toast('Relay settings saved');
 		} catch (e) {
 			toast(String(e), 'error');
@@ -161,10 +192,15 @@
 		</div>
 	{:else}
 		<div class="surface">
-			<p class="no-id-text">No identity yet. Generate a keypair to get started.</p>
-			<button class="btn-primary" on:click={handleGenerate} disabled={generating}>
-				{generating ? 'Generating…' : 'Generate keypair'}
-			</button>
+			<p class="no-id-text">No identity yet. Generate a keypair or restore from a backup.</p>
+			<div style="display:flex; gap:8px; flex-wrap:wrap;">
+				<button class="btn-primary" on:click={handleGenerate} disabled={generating}>
+					{generating ? 'Generating…' : 'Generate keypair'}
+				</button>
+				<button class="btn-default" on:click={handleImport} disabled={importing}>
+					{@html icons.key} {importing ? 'Importing…' : 'Import from backup'}
+				</button>
+			</div>
 		</div>
 	{/if}
 
@@ -213,7 +249,7 @@
 				<div class="toggle-label">Allow incoming messages from anyone</div>
 				<div class="toggle-sub">Off means only people you follow can DM you</div>
 			</div>
-			<button class="toggle" class:toggle-on={allowDms} on:click={() => (allowDms = !allowDms)}>
+			<button class="toggle" class:toggle-on={allowDms} on:click={toggleAllowDms}>
 				<span class="toggle-thumb" />
 			</button>
 		</div>

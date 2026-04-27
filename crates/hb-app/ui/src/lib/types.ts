@@ -65,6 +65,7 @@ export interface ScanOptions {
 
 export interface ShareSettings {
 	enabled: boolean;
+	root_path?: string;
 	allowed_paths: string[];
 	speed_cap_kbps?: number;
 	download_limit?: number;

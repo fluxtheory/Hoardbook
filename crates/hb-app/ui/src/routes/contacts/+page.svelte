@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { refreshContact, requestDownload } from '$lib/api.js';
+	import { refreshContact, requestDownload, unfollowContact } from '$lib/api.js';
+	import { save } from '@tauri-apps/plugin-dialog';
 	import { contacts, toast } from '$lib/stores.js';
 	import { icons, avatarHue } from '$lib/icons.js';
 	import CollectionPanel from '$lib/components/CollectionPanel.svelte';
@@ -25,10 +26,24 @@
 		return hb_id.length > 14 ? hb_id.slice(0, 8) + '…' + hb_id.slice(-4) : hb_id;
 	}
 
-	async function handleDownload(e: CustomEvent<{ peerId: string; slug: string; path: string }>) {
+	async function handleUnfollow(hb_id: string) {
 		try {
-			await requestDownload(e.detail.peerId, e.detail.slug, e.detail.path);
-			toast(`Downloading ${e.detail.path}`);
+			await unfollowContact(hb_id);
+			contacts.update((cs) => cs.filter((c) => c.hb_id !== hb_id));
+			toast('Contact removed');
+		} catch (e) {
+			toast(String(e), 'error');
+		}
+	}
+
+	async function handleDownload(e: CustomEvent<{ peerId: string; slug: string; path: string }>) {
+		const filename = e.detail.path.split('/').pop() ?? e.detail.path;
+		const savePath = await save({ defaultPath: filename });
+		if (!savePath) return;
+		const peer = $contacts.find((c) => c.hb_id === e.detail.peerId);
+		try {
+			await requestDownload(e.detail.peerId, peer?.node_addr ?? null, e.detail.slug, e.detail.path, savePath);
+			toast(`Downloading to ${savePath}`);
 		} catch (err) {
 			toast(String(err), 'error');
 		}
@@ -94,6 +109,12 @@
 								>
 									<span>{@html icons.refresh}</span>
 									{refreshing === peer.hb_id ? '…' : 'Refresh'}
+								</button>
+								<button
+									class="btn-ghost btn-sm btn-danger"
+									on:click={() => handleUnfollow(peer.hb_id)}
+								>
+									Unfollow
 								</button>
 								<button
 									class="btn-default btn-sm"
@@ -221,4 +242,6 @@
 	.btn-ghost:disabled { opacity: 0.5; cursor: not-allowed; }
 	.btn-sm { padding: 5px 11px; font-size: 12px; }
 	.btn-icon { gap: 4px; }
+	.btn-danger { color: var(--red, #e05c5c); }
+	.btn-danger:hover { background: color-mix(in oklch, var(--red, #e05c5c) 10%, transparent); }
 </style>

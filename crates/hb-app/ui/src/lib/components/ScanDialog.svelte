@@ -9,6 +9,9 @@
 	const dispatch = createEventDispatcher<{ scanned: Collection; close: void }>();
 
 	export let open = false;
+	export let initialPath = '';
+	export let initialAlias = '';
+	export let title = 'Add collection';
 
 	let path = '';
 	let pathAlias = '';
@@ -18,6 +21,11 @@
 	let watchChanges = true;
 	let publishTree = false;
 	let scanning = false;
+
+	$: if (open) {
+		path = initialPath;
+		pathAlias = initialAlias;
+	}
 
 	async function browse() {
 		const selected = await openDialog({ directory: true, multiple: false, title: 'Select directory' });
@@ -61,7 +69,7 @@
 		<div class="modal">
 			<!-- Header -->
 			<div class="modal-header">
-				<div class="modal-title">Add collection</div>
+				<div class="modal-title">{title}</div>
 				<button class="close-btn" on:click={close}>{@html icons.close}</button>
 			</div>
 

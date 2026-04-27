@@ -30,6 +30,10 @@ export const exportKeypair = () => invoke<string>('export_keypair');
 
 export const saveKeypairFile = (path: string) => invoke<void>('save_keypair_file', { path });
 
+export const importKeypair = (path: string) => invoke<IdentityInfo>('import_keypair', { path });
+
+export const getNodeAddr = () => invoke<string | null>('get_node_addr');
+
 export const wipeData = () => invoke<void>('wipe_data');
 
 // ── Profile ───────────────────────────────────────────────────────────────────
@@ -56,6 +60,7 @@ export const publishCollection = (slug: string) =>
 
 export interface Settings {
 	relay_urls: string[];
+	allow_dms: boolean;
 }
 
 export const getSettings = () => invoke<Settings>('get_settings');
@@ -70,6 +75,8 @@ export const follow = (hb_id: string) => invoke<void>('follow', { hb_id });
 
 export const getContacts = () => invoke<CachedPeer[]>('get_contacts');
 
+export const unfollowContact = (hb_id: string) => invoke<void>('unfollow_contact', { hb_id });
+
 export const refreshContact = (hb_id: string) => invoke<CachedPeer>('refresh_contact', { hb_id });
 
 // ── Sharing ───────────────────────────────────────────────────────────────────
@@ -80,8 +87,13 @@ export const getShareSettings = (slug: string) =>
 export const saveShareSettings = (slug: string, settings: ShareSettings) =>
 	invoke<void>('save_share_settings', { slug, settings });
 
-export const requestDownload = (peer_hb_id: string, slug: string, path: string) =>
-	invoke<void>('request_download', { peer_hb_id, slug, path });
+export const requestDownload = (
+	peer_hb_id: string,
+	peer_node_addr: string | null,
+	slug: string,
+	path: string,
+	save_path: string,
+) => invoke<number>('request_download', { peer_hb_id, peer_node_addr, slug, path, save_path });
 
 // ── Chat ──────────────────────────────────────────────────────────────────────
 

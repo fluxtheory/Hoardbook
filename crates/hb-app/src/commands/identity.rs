@@ -3,9 +3,9 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::{
+    SharedEndpoint, SharedIdentity, SharedRelay,
     error::{CmdResult, cmd_err},
     store::DataStore,
-    SharedIdentity, SharedRelay,
 };
 
 #[derive(Debug, Clone, Serialize)]
@@ -35,6 +35,7 @@ fn shorten(id: &str) -> String {
 pub async fn generate_keypair(
     store: State<'_, DataStore>,
     identity: State<'_, SharedIdentity>,
+    endpoint: State<'_, SharedEndpoint>,
 ) -> CmdResult<IdentityInfo> {
     if store.load_keypair().map_err(cmd_err)?.is_some() {
         return Err("A keypair already exists. Use rotate_keypair to replace it.".into());
@@ -49,6 +50,50 @@ pub async fn generate_keypair(
 
     store.save_keypair(&stored).map_err(cmd_err)?;
     let info = IdentityInfo::from_keypair(&kp);
+
+    // Start iroh P2P endpoint with this keypair's key.
+    crate::start_iroh_endpoint(kp.private_key_bytes(), (*store).clone(), (*endpoint).clone())
+        .await
+        .map_err(cmd_err)?;
+
+    *identity.write().await = Some(kp);
+    Ok(info)
+}
+
+/// Import a keypair from a previously exported JSON file.
+#[tauri::command]
+pub async fn import_keypair(
+    path: String,
+    store: State<'_, DataStore>,
+    identity: State<'_, SharedIdentity>,
+    endpoint: State<'_, SharedEndpoint>,
+) -> CmdResult<IdentityInfo> {
+    if store.load_keypair().map_err(cmd_err)?.is_some() {
+        return Err("A keypair already exists. Wipe data first to import a different keypair.".into());
+    }
+
+    let json = std::fs::read_to_string(&path)
+        .map_err(|e| format!("Could not read file: {e}"))?;
+    let stored: StoredKeypair = serde_json::from_str(&json)
+        .map_err(|e| format!("Invalid keypair file: {e}"))?;
+
+    let private_bytes: [u8; 32] = hex::decode(&stored.private_key_hex)
+        .map_err(|e| format!("Invalid private key hex: {e}"))?
+        .try_into()
+        .map_err(|_| "Private key must be exactly 32 bytes".to_string())?;
+
+    let kp = HoardbookKeypair::from_bytes(&private_bytes);
+    if kp.hb_id() != stored.hb_id {
+        return Err("Keypair file is corrupted: public key does not match the private key".into());
+    }
+
+    store.save_keypair(&stored).map_err(cmd_err)?;
+    let info = IdentityInfo::from_keypair(&kp);
+
+    crate::start_iroh_endpoint(&private_bytes, (*store).clone(), (*endpoint).clone())
+        .await
+        .map_err(cmd_err)?;
+
     *identity.write().await = Some(kp);
     Ok(info)
 }
@@ -96,6 +141,16 @@ pub async fn validate_hb_id(hb_id: String) -> CmdResult<bool> {
     Ok(hb_id_decode(&hb_id).is_ok())
 }
 
+/// Return the current iroh EndpointAddr as a JSON string, or None if not initialised.
+#[tauri::command]
+pub async fn get_node_addr(endpoint: State<'_, SharedEndpoint>) -> CmdResult<Option<String>> {
+    let guard = endpoint.read().await;
+    let addr = guard.as_ref().map(|ep| {
+        serde_json::to_string(&ep.addr()).unwrap_or_default()
+    });
+    Ok(addr)
+}
+
 /// Export the stored keypair as a JSON string for the user to save to a file.
 #[tauri::command]
 pub async fn export_keypair(store: State<'_, DataStore>) -> CmdResult<String> {
@@ -124,9 +179,17 @@ pub async fn wipe_data(
     store: State<'_, DataStore>,
     identity: State<'_, SharedIdentity>,
     relay: State<'_, SharedRelay>,
+    endpoint: State<'_, SharedEndpoint>,
 ) -> CmdResult<()> {
     store.wipe().map_err(cmd_err)?;
     *identity.write().await = None;
     relay.set_relay_urls(vec![]);
+
+    // Close and clear the iroh endpoint.
+    let mut ep_guard = endpoint.write().await;
+    if let Some(ep) = ep_guard.take() {
+        ep.close().await;
+    }
+
     Ok(())
 }

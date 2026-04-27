@@ -48,6 +48,15 @@ pub async fn scan_directory(
     };
 
     store.save_collection_draft(&collection).map_err(cmd_err)?;
+
+    // Persist the root path so the transfer server can find files on disk.
+    let mut share = store
+        .load_share_settings(&collection.slug)
+        .map_err(cmd_err)?
+        .unwrap_or_default();
+    share.root_path = Some(opts.path.clone());
+    store.save_share_settings(&collection.slug, &share).map_err(cmd_err)?;
+
     Ok(collection)
 }
 

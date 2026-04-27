@@ -44,8 +44,9 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Result<Option<T>> {
 // DataStore
 // ---------------------------------------------------------------------------
 
+#[derive(Clone)]
 pub struct DataStore {
-    base: PathBuf,
+    pub(crate) base: PathBuf,
 }
 
 impl DataStore {
@@ -203,6 +204,14 @@ impl DataStore {
     pub fn save_contact(&self, pubkey_hash: &str, peer: &CachedPeer) -> Result<()> {
         write_json(&self.contact_path(pubkey_hash), peer)
             .context("saving contact")
+    }
+
+    pub fn delete_contact(&self, pubkey_hash: &str) -> Result<()> {
+        let path = self.contact_path(pubkey_hash);
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
+        Ok(())
     }
 
     pub fn list_contacts(&self) -> Result<Vec<CachedPeer>> {
