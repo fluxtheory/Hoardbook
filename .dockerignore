@@ -1,0 +1,6 @@
+target/
+.git/
+crates/hb-app/ui/node_modules/
+crates/hb-app/ui/build/
+crates/hb-app/ui/.svelte-kit/
+crates/*.db
